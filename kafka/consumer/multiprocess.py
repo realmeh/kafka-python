@@ -129,6 +129,8 @@ class MultiProcessConsumer(Consumer):
         self.pause = Event()        # Requests the consumers to pause fetch
         self.size = Value('i', 0)   # Indicator of number of messages to fetch
 
+        self.partition_info = False     # Do not return partition info in msgs
+
         partitions = self.offsets.keys()
 
         # If unspecified, start one consumer per partition
@@ -158,6 +160,13 @@ class MultiProcessConsumer(Consumer):
             proc.daemon = True
             proc.start()
             self.procs.append(proc)
+
+    def provide_partition_info(self):
+        """
+        Indicates that partition info must be returned by the consumer
+        """
+        self.partition_info = True
+
 
     def __repr__(self):
         return '<MultiProcessConsumer group=%s, topic=%s, consumers=%d>' % \
@@ -200,7 +209,11 @@ class MultiProcessConsumer(Consumer):
             self.start.clear()
             self.count_since_commit += 1
             self._auto_commit()
-            yield message
+
+            if self.partition_info:
+                yield partition, message
+            else:
+                yield message
 
         self.start.clear()
 
